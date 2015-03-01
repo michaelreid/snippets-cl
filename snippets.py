@@ -55,8 +55,12 @@ def get(name):
     cursor = connection.cursor()
     command = "SELECT message FROM snippets WHERE keyword=%s;"
     cursor.execute(command, (name,))
+    row = cursor.fetchone()
     logging.debug("Snippet retrieved successfully.")
-    return cursor.fetchone()[0]
+    if not row:
+        # No snippet was found with that name
+        return "ERROR: No snippet with that name exists. Please try again."
+    return row[0]
     
 # Update objects in the database    
 def update(name):
