@@ -19,7 +19,7 @@ import psycopg2
 logging.basicConfig(filename="snippets.log", level=logging.DEBUG)
 # Add logging lines for connecting snippets app to database from Python
 logging.debug("Connection to PostgreSQL.")
-connection = psycopg2.connect("dbname='snippets' user='action' host='localhost'")
+connection = psycopg2.connect("dbname='snippets' user='m' host='localhost'")
 logging.debug("Database connection established.")
 
 
