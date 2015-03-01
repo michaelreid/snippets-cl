@@ -19,6 +19,7 @@ import psycopg2
 logging.basicConfig(filename="snippets.log", level=logging.DEBUG)
 # Add logging lines for connecting snippets app to database from Python
 logging.debug("Connection to PostgreSQL.")
+# Establish the connection to Postgres with the psycopg2 package - settings
 connection = psycopg2.connect("dbname='snippets' user='m' host='localhost'")
 logging.debug("Database connection established.")
 
@@ -50,8 +51,12 @@ def get(name):
 
     Returns the snippet.
     """
-    logging.error("FIXME: Unimplemented - get({!r})".format(name))
-    return ""
+    logging.info("Retrieving snippet {!r}".format(name))
+    cursor = connection.cursor()
+    command = "SELECT message FROM snippets WHERE keyword=%s;"
+    cursor.execute(command, (name,))
+    logging.debug("Snippet retrieved successfully.")
+    return cursor.fetchone()[0]
     
 # Update objects in the database    
 def update(name):
@@ -116,7 +121,7 @@ def main():
 
     if command == "put":
         # double star operator is unpacking, converts key-value pairs in dictionary
-        # into keyword arguments to the funciton
+        # into keyword arguments to the function
         name, snippet = put(**arguments)
         print("Stored {!r} as {!r}".format(snippet, name))
     elif command == "get":
