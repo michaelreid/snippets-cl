@@ -36,9 +36,18 @@ def put(name, snippet):
     """
     logging.info("Storing snippet {!r}: {!r}".format(name, snippet))
     cursor = connection.cursor()
-    command = "insert into snippets values (%s, %s)"
-    cursor.execute(command, (name, snippet))
-    connection.commit()
+    # ADD error handling to the put method:
+    #     where the snippet already exists, simply update it, otherwise
+    #     Psycopg2 throws an error that the snippet already exists.
+    #     NB: this is called a MERGE
+    try:
+        with connection, connection.cursor() as cursor:
+            cursor.execute("INSERT INTO snippets VALUES (%s, %s)", (name, snippet))
+    except psycopg2.IntegrityError as e:
+        with connection, connection.cursor() as cursor:
+            connection.rollback()
+            cursor.execute("UPDATE snippets SET message=%s WHERE keyword=%s", (snippet, name))
+            connection.commit()
     logging.debug("Snippet stored successfully.")
     return name, snippet
 
@@ -52,11 +61,16 @@ def get(name):
     Returns the snippet.
     """
     logging.info("Retrieving snippet {!r}".format(name))
-    cursor = connection.cursor()
-    command = "SELECT message FROM snippets WHERE keyword=%s;"
-    cursor.execute(command, (name,))
-    row = cursor.fetchone()
+    # Using the 'with' block the transaction is guaranteed to be committed (if everything works)
+    # or rolled back if there's an exception thrown
+    # [cursor object is known as a context manager] when context managers are used in a 'with' block
+    # they automatically perform cleanup actions when exited
+    with connection, connection.cursor() as cursor:
+        cursor.execute("SELECT message FROM snippets WHERE keyword=%s;", (name,))
+        row = cursor.fetchone()
     logging.debug("Snippet retrieved successfully.")
+    # Need to add commit() call, to do with locking access to database while reading
+    connection.commit()
     if not row:
         # No snippet was found with that name
         return "ERROR: No snippet with that name exists. Please try again."
@@ -104,8 +118,8 @@ def main():
     # 1. Subparser for the put command
     logging.debug("Constructing put subparser")
     put_parser = subparsers.add_parser("put", help="Store a snippet")
-    put_parser.add_argument("name", help="The name of the snippet")
-    put_parser.add_argument("snippet", help="The snippet of text")
+    put_parser.add_argument("name", help="The name of the snippet.")
+    put_parser.add_argument("snippet", help="The snippet of text (a string enclosed in '').")
 
     # 2. Subparser for the get command
     logging.debug("Constructing get subparser")
@@ -131,7 +145,6 @@ def main():
     elif command == "get":
         snippet = get(**arguments)
         print("Retrieved snippet: {!r}".format(snippet))
-
 
 # Enable snippets.py to be called from the Command Line
 if __name__ == "__main__":
